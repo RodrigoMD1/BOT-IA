@@ -1,3 +1,9 @@
+import datetime
+
+def log_event(text):
+    with open("trading_log.txt", "a") as f:
+        f.write(f"[{datetime.datetime.now()}] {text}\n")
+
 # Bot de trading para Binance (criptomonedas)
 # Requiere: python-binance
 # Estrategia: cruce de medias móviles (ejemplo)
@@ -7,8 +13,8 @@ from binance.client import Client
 import numpy as np
 import time
 import threading
-import tkinter as tk
-from tkinter import scrolledtext
+# import tkinter as tk  # Comentado para uso futuro en PC
+# from tkinter import scrolledtext  # Comentado para uso futuro en PC
 
 # Configuración de claves API (rellena con tus datos)
 API_KEY = 'ZJ0QB5V5ijovNtHvtVLMdgoxqZS3B521YcoeosI6Po7Ea9INmvc8vIOXY2DUX3Zm'
@@ -54,133 +60,52 @@ def place_order(side, quantity):
     except Exception as e:
         print(f"Error al ejecutar orden: {e}")
 
-class TradingBotGUI:
-    def __init__(self, master):
-        self.master = master
-        master.title("Bot de Trading Binance")
-        master.geometry("600x500")
-
-        self.status_label = tk.Label(master, text="Estado del bot:", font=("Arial", 12))
-        self.status_label.pack()
-        self.status_text = tk.Label(master, text="Esperando...", fg="blue", font=("Arial", 10))
-        self.status_text.pack()
-
-        self.risk_label = tk.Label(master, text=f"Gestión de riesgo:\nStop Loss: {STOP_LOSS_PCT*100}% | Take Profit: {TAKE_PROFIT_PCT*100}% | Máx. operaciones/día: {MAX_TRADES_PER_DAY}", font=("Arial", 10))
-        self.risk_label.pack()
-
-        self.signal_label = tk.Label(master, text="Última señal:", font=("Arial", 12))
-        self.signal_label.pack()
-        self.signal_text = tk.Label(master, text="-", fg="green", font=("Arial", 10))
-        self.signal_text.pack()
-
-        self.price_label = tk.Label(master, text="Historial de precios:", font=("Arial", 12))
-        self.price_label.pack()
-        self.price_box = scrolledtext.ScrolledText(master, width=70, height=10)
-        self.price_box.pack()
-
-        self.trade_label = tk.Label(master, text="Operaciones ejecutadas:", font=("Arial", 12))
-        self.trade_label.pack()
-        self.trade_box = scrolledtext.ScrolledText(master, width=70, height=7)
-        self.trade_box.pack()
-
-        self.info_label = tk.Label(master, text="Info adicional:", font=("Arial", 12))
-        self.info_label.pack()
-        self.info_box = scrolledtext.ScrolledText(master, width=70, height=4)
-        self.info_box.pack()
-        self.info_box.insert(tk.END, f"Símbolo: {SYMBOL}\nIntervalo: {INTERVAL}\nCantidad: {QUANTITY}\nSaldo mínimo recomendado: 10 USDT\n")
-        self.info_box.config(state='disabled')
-
-        self.profit_label = tk.Label(master, text="Ganancia/Pérdida acumulada:", font=("Arial", 12))
-        self.profit_label.pack()
-        self.profit_text = tk.Label(master, text="0 USDT", fg="purple", font=("Arial", 10))
-        self.profit_text.pack()
-        self.total_profit = 0.0
-
-        self.stop_button = tk.Button(master, text="Detener bot", command=self.stop_bot, bg="red", fg="white")
-        self.stop_button.pack(pady=10)
-
-        self.running = True
-        self.thread = threading.Thread(target=self.run_bot)
-        self.thread.start()
-
-    def stop_bot(self):
-        self.running = False
-        self.status_text.config(text="Bot detenido.", fg="red")
-
-    def get_balance(self):
-        try:
-            balance = client.get_asset_balance(asset=SYMBOL[:-4])
-            if balance:
-                return f"Saldo actual: {balance['free']} {SYMBOL[:-4]}"
-            else:
-                return "No se pudo obtener el saldo."
-        except Exception as e:
-            return f"Error al obtener saldo: {e}"
-
-    def get_min_trade(self):
-        try:
-            info = client.get_symbol_info(SYMBOL)
-            min_qty = None
-            for f in info['filters']:
-                if f['filterType'] == 'LOT_SIZE':
-                    min_qty = f['minQty']
-            return f"Cantidad mínima de operación: {min_qty} {SYMBOL[:-4]}"
-        except Exception as e:
-            return f"Error al obtener mínimo: {e}"
-
-    def update_info(self):
-        saldo = self.get_balance()
-        minimo = self.get_min_trade()
-        self.info_box.config(state='normal')
-        self.info_box.delete('1.0', tk.END)
-        self.info_box.insert(tk.END, f"Símbolo: {SYMBOL}\nIntervalo: {INTERVAL}\nCantidad: {QUANTITY}\nSaldo mínimo recomendado: 10 USDT\n{saldo}\n{minimo}\n")
-        self.info_box.config(state='disabled')
-
-    def update_profit(self, profit):
-        self.total_profit += profit
-        self.profit_text.config(text=f"{self.total_profit:.6f} USDT")
-
-    def run_bot(self):
-        global trade_count, last_buy_price
-        self.status_text.config(text="Bot en ejecución (estrategia agresiva)", fg="blue")
-        while self.running and trade_count < MAX_TRADES_PER_DAY:
-            short_ma, long_ma = simple_strategy()
-            current_price = get_klines(SYMBOL, INTERVAL, limit=1)[-1]
-            self.signal_text.config(text=f"MA corta: {short_ma:.2f}, MA larga: {long_ma:.2f}")
-            self.price_box.insert(tk.END, f"Precio actual: {current_price}\n")
-            self.price_box.see(tk.END)
-            # Estrategia agresiva: compra si la corta >= larga, vende si la corta < larga
-            if short_ma >= long_ma and last_buy_price is None:
-                self.trade_box.insert(tk.END, f"COMPRA agresiva a {current_price}\n")
-                last_buy_price = current_price
+def run_bot_console():
+    global trade_count, last_buy_price
+    print("Bot de trading en modo consola (sin interfaz gráfica)")
+    total_profit = 0.0
+    while trade_count < MAX_TRADES_PER_DAY:
+        short_ma, long_ma = simple_strategy()
+        current_price = get_klines(SYMBOL, INTERVAL, limit=1)[-1]
+        print(f"MA corta: {short_ma:.2f}, MA larga: {long_ma:.2f}, Precio actual: {current_price}")
+        # Estrategia agresiva: compra si la corta >= larga, vende si la corta < larga
+        if short_ma >= long_ma and last_buy_price is None:
+            print(f"COMPRA agresiva a {current_price}")
+            log_event(f"COMPRA agresiva a {current_price}")
+            last_buy_price = current_price
+            trade_count += 1
+        elif last_buy_price:
+            if current_price <= last_buy_price * (1 - STOP_LOSS_PCT):
+                print(f"STOP LOSS activado. Venta a {current_price}")
+                log_event(f"STOP LOSS activado. Venta a {current_price}")
+                profit = (current_price - last_buy_price) * QUANTITY
+                total_profit += profit
+                log_event(f"Ganancia/Pérdida: {profit:.6f} USDT | Acumulado: {total_profit:.6f} USDT")
+                last_buy_price = None
                 trade_count += 1
-            elif last_buy_price:
-                if current_price <= last_buy_price * (1 - STOP_LOSS_PCT):
-                    self.trade_box.insert(tk.END, f"STOP LOSS activado. Venta a {current_price}\n")
-                    profit = (current_price - last_buy_price) * QUANTITY
-                    self.update_profit(profit)
-                    last_buy_price = None
-                    trade_count += 1
-                elif current_price >= last_buy_price * (1 + TAKE_PROFIT_PCT):
-                    self.trade_box.insert(tk.END, f"TAKE PROFIT activado. Venta a {current_price}\n")
-                    profit = (current_price - last_buy_price) * QUANTITY
-                    self.update_profit(profit)
-                    last_buy_price = None
-                    trade_count += 1
-                elif short_ma < long_ma:
-                    self.trade_box.insert(tk.END, f"VENTA agresiva por cruce a {current_price}\n")
-                    profit = (current_price - last_buy_price) * QUANTITY
-                    self.update_profit(profit)
-                    last_buy_price = None
-                    trade_count += 1
-                else:
-                    self.status_text.config(text="Sin señal clara o esperando gestión de riesgo", fg="orange")
+            elif current_price >= last_buy_price * (1 + TAKE_PROFIT_PCT):
+                print(f"TAKE PROFIT activado. Venta a {current_price}")
+                log_event(f"TAKE PROFIT activado. Venta a {current_price}")
+                profit = (current_price - last_buy_price) * QUANTITY
+                total_profit += profit
+                log_event(f"Ganancia/Pérdida: {profit:.6f} USDT | Acumulado: {total_profit:.6f} USDT")
+                last_buy_price = None
+                trade_count += 1
+            elif short_ma < long_ma:
+                print(f"VENTA agresiva por cruce a {current_price}")
+                log_event(f"VENTA agresiva por cruce a {current_price}")
+                profit = (current_price - last_buy_price) * QUANTITY
+                total_profit += profit
+                log_event(f"Ganancia/Pérdida: {profit:.6f} USDT | Acumulado: {total_profit:.6f} USDT")
+                last_buy_price = None
+                trade_count += 1
             else:
-                self.status_text.config(text="Sin señal clara", fg="orange")
-            self.trade_box.see(tk.END)
-            time.sleep(30)
-        self.status_text.config(text="Bot detenido (límite alcanzado)", fg="red")
-        self.update_info()
+                print("Sin señal clara o esperando gestión de riesgo")
+        else:
+            print("Sin señal clara")
+        time.sleep(30)
+    print(f"Bot detenido. Ganancia/Pérdida total: {total_profit:.6f} USDT")
+    log_event(f"Bot detenido. Ganancia/Pérdida total: {total_profit:.6f} USDT")
 
 # ------------------ GUÍA DE USO ------------------
 '''
@@ -206,6 +131,9 @@ GUÍA RÁPIDA PARA USAR EL BOT DE TRADING BINANCE
 '''
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = TradingBotGUI(root)
-    root.mainloop()
+    # --- Para uso en VM (consola) ---
+    run_bot_console()
+    # --- Para uso en PC con interfaz gráfica, descomentar estas líneas ---
+    # root = tk.Tk()
+    # app = TradingBotGUI(root)
+    # root.mainloop()
