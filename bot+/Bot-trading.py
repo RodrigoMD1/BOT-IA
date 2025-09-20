@@ -1,8 +1,9 @@
 import datetime
 
 def log_event(text):
-    with open("trading_log.txt", "a") as f:
+    with open("btc_trading_log.txt", "a") as f:
         f.write(f"[{datetime.datetime.now()}] {text}\n")
+    print(f"[{datetime.datetime.now()}] {text}")  # También mostrar en consola
 
 # Bot de trading para Binance (criptomonedas)
 # Requiere: python-binance
@@ -21,16 +22,16 @@ API_KEY = 'ZJ0QB5V5ijovNtHvtVLMdgoxqZS3B521YcoeosI6Po7Ea9INmvc8vIOXY2DUX3Zm'
 API_SECRET = 'YWmFXL8aTD6tcD7XTdmCdpBKv30p6bHqzUjktigc95ydTfKDUsAySTUVIJmNRaUo'
 
 # Parámetros de trading
-SYMBOL = 'SHIBUSDT'
+SYMBOL = 'BTCUSDT'  # Bitcoin/USDT para mejores ganancias visibles
 INTERVAL = '1m'  # intervalo de velas
-QUANTITY = 0.001  # cantidad a comprar/vender
-SHORT_WINDOW = 2  # media móvil muy corta
-LONG_WINDOW = 4  # media móvil corta
+QUANTITY = 0.0001  # 0.0001 BTC = ~$6-7 USD por trade
+SHORT_WINDOW = 3  # media móvil corta (3 minutos)
+LONG_WINDOW = 7  # media móvil larga (7 minutos)
 
 # Parámetros de gestión de riesgo
-STOP_LOSS_PCT = 0.005  # 0.5% stop loss
-TAKE_PROFIT_PCT = 0.01  # 1% take profit
-MAX_TRADES_PER_DAY = 99999  # Sin límite práctico
+STOP_LOSS_PCT = 0.003  # 0.3% stop loss (ajustado para BTC)
+TAKE_PROFIT_PCT = 0.006  # 0.6% take profit (ajustado para BTC)
+MAX_TRADES_PER_DAY = 50  # Límite diario más razonable
 
 client = Client(API_KEY, API_SECRET)
 
@@ -67,45 +68,47 @@ def run_bot_console():
     while trade_count < MAX_TRADES_PER_DAY:
         short_ma, long_ma = simple_strategy()
         current_price = get_klines(SYMBOL, INTERVAL, limit=1)[-1]
-        print(f"MA corta: {short_ma:.2f}, MA larga: {long_ma:.2f}, Precio actual: {current_price}")
-        # Estrategia agresiva: compra si la corta >= larga, vende si la corta < larga
-        if short_ma >= long_ma and last_buy_price is None:
-            print(f"COMPRA agresiva a {current_price}")
-            log_event(f"COMPRA agresiva a {current_price}")
+        print(f"Precio actual BTC: ${current_price:.2f}")
+        print(f"MA corta: ${short_ma:.2f}, MA larga: ${long_ma:.2f}")
+        
+        # Estrategia: compra si la corta > larga, vende si la corta < larga
+        if short_ma > long_ma and last_buy_price is None:
+            print(f"COMPRA BTC a ${current_price:.2f}")
+            log_event(f"COMPRA BTC a ${current_price:.2f}")
             last_buy_price = current_price
             trade_count += 1
         elif last_buy_price:
             if current_price <= last_buy_price * (1 - STOP_LOSS_PCT):
-                print(f"STOP LOSS activado. Venta a {current_price}")
-                log_event(f"STOP LOSS activado. Venta a {current_price}")
+                print(f"STOP LOSS activado. Venta BTC a ${current_price:.2f}")
+                log_event(f"STOP LOSS activado. Venta BTC a ${current_price:.2f}")
                 profit = (current_price - last_buy_price) * QUANTITY
                 total_profit += profit
-                log_event(f"Ganancia/Pérdida: {profit:.6f} USDT | Acumulado: {total_profit:.6f} USDT")
+                log_event(f"Ganancia/Pérdida: ${profit:.2f} USD | Acumulado: ${total_profit:.2f} USD")
                 last_buy_price = None
                 trade_count += 1
             elif current_price >= last_buy_price * (1 + TAKE_PROFIT_PCT):
-                print(f"TAKE PROFIT activado. Venta a {current_price}")
-                log_event(f"TAKE PROFIT activado. Venta a {current_price}")
+                print(f"TAKE PROFIT activado. Venta BTC a ${current_price:.2f}")
+                log_event(f"TAKE PROFIT activado. Venta BTC a ${current_price:.2f}")
                 profit = (current_price - last_buy_price) * QUANTITY
                 total_profit += profit
-                log_event(f"Ganancia/Pérdida: {profit:.6f} USDT | Acumulado: {total_profit:.6f} USDT")
+                log_event(f"Ganancia/Pérdida: ${profit:.2f} USD | Acumulado: ${total_profit:.2f} USD")
                 last_buy_price = None
                 trade_count += 1
             elif short_ma < long_ma:
-                print(f"VENTA agresiva por cruce a {current_price}")
-                log_event(f"VENTA agresiva por cruce a {current_price}")
+                print(f"VENTA BTC por cruce a ${current_price:.2f}")
+                log_event(f"VENTA BTC por cruce a ${current_price:.2f}")
                 profit = (current_price - last_buy_price) * QUANTITY
                 total_profit += profit
-                log_event(f"Ganancia/Pérdida: {profit:.6f} USDT | Acumulado: {total_profit:.6f} USDT")
+                log_event(f"Ganancia/Pérdida: ${profit:.2f} USD | Acumulado: ${total_profit:.2f} USD")
                 last_buy_price = None
                 trade_count += 1
             else:
                 print("Sin señal clara o esperando gestión de riesgo")
         else:
             print("Sin señal clara")
-        time.sleep(30)
-    print(f"Bot detenido. Ganancia/Pérdida total: {total_profit:.6f} USDT")
-    log_event(f"Bot detenido. Ganancia/Pérdida total: {total_profit:.6f} USDT")
+        time.sleep(60)  # Esperar 60 segundos entre iteraciones para BTC
+    print(f"Bot BTC detenido. Ganancia/Pérdida total: ${total_profit:.2f} USD")
+    log_event(f"Bot BTC detenido. Ganancia/Pérdida total: ${total_profit:.2f} USD")
 
 # ------------------ GUÍA DE USO ------------------
 '''
