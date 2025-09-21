@@ -372,16 +372,29 @@ class TradingBotAnalyzerGUI:
                 except:
                     pass
             
-            # Detectar predicciones y confianza
-            pred_match = re.search(r'Pred[:\s]+([+-]?\d+\.\d+).*Conf[:\s]+(\d+\.\d+)%', line)
+            # Detectar predicciones y confianza - FORMATO ACTUALIZADO
+            pred_match = re.search(r'Pred:\s*([+-]?\d+\.\d+).*Conf:\s*(\d+\.\d+)%', line)
             if pred_match:
                 prediction = float(pred_match.group(1))
                 confidence = float(pred_match.group(2))
                 self.ml_bot_data['predictions'].append(prediction)
                 self.ml_bot_data['confidence_levels'].append(confidence)
+                
+                # Extraer precio BTC del mismo log
+                price_match = re.search(r'Precio BTC:\s*\$(\d+\.\d+)', line)
+                if price_match:
+                    price = float(price_match.group(1))
+                    # Agregar como predicción con datos
+                    self.ml_bot_data['trades'].append({
+                        'type': 'PREDICTION',
+                        'price': price,
+                        'prediction': prediction,
+                        'confidence': confidence,
+                        'timestamp': timestamp
+                    })
             
-            # Detectar compras ML - ACTUALIZADO PARA NUEVOS FORMATOS
-            if any(keyword in line for keyword in ['COMPRA ML', '🟢 COMPRA ML BTC']):
+            # Detectar compras ML - FORMATO ACTUALIZADO PARA LOGS REALES
+            if any(keyword in line for keyword in ['COMPRA ML', '🟢 COMPRA ML BTC', '🟢 COMPRA ML']):
                 # Buscar precio en el formato: Precio: $115588.50
                 price_match = re.search(r'Precio:\s*\$(\d+\.?\d*)', line)
                 if not price_match:
@@ -400,6 +413,23 @@ class TradingBotAnalyzerGUI:
                         'confidence': confidence,
                         'timestamp': timestamp
                     })
+            
+            # Detectar estadísticas ML
+            if 'ESTADÍSTICAS ML' in line:
+                # Extraer balance, ROI, trades, etc.
+                balance_match = re.search(r'Balance:\s*(\d+\.\d+)\s*USDT', line)
+                roi_match = re.search(r'ROI:\s*([+-]?\d+\.\d+)%', line)
+                trades_match = re.search(r'Trades:\s*(\d+)', line)
+                winrate_match = re.search(r'Win Rate:\s*(\d+\.\d+)%', line)
+                
+                if balance_match:
+                    self.ml_bot_data['balance'] = float(balance_match.group(1))
+                if roi_match:
+                    self.ml_bot_data['roi'] = float(roi_match.group(1))
+                if trades_match:
+                    self.ml_bot_data['total_trades'] = int(trades_match.group(1))
+                if winrate_match:
+                    self.ml_bot_data['win_rate'] = float(winrate_match.group(1))
             
             # Detectar ventas ML con P&L - ACTUALIZADO PARA NUEVOS FORMATOS
             if any(keyword in line for keyword in ['STOP LOSS', 'TAKE PROFIT', '✅ VENTA EXITOSA', '❌ PÉRDIDA']):
