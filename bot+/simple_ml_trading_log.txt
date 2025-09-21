@@ -1,2 +1,0 @@
-[2025-09-19 06:01:05.469890] Bot ML simplificado iniciado
-[2025-09-19 06:07:25.638126] Bot ML simplificado detenido

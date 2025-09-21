@@ -1,4 +1,0 @@
-[2025-09-19 05:55:34.075879] Bot avanzado iniciado
-[2025-09-19 05:56:05.925306] COMPRA AVANZADA - Precio: 1.32e-05, Confianza: 1.00
-[2025-09-19 05:56:16.432959] VENTA - Bot detenido - P&L: 0.000000
-[2025-09-19 05:56:16.435645] Bot avanzado detenido

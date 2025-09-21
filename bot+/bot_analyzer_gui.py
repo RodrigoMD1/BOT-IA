@@ -253,23 +253,47 @@ class TradingBotAnalyzerGUI:
         """Analizar el log del bot básico"""
         lines = log_content.strip().split('\n')
         
+        # Variables para seguimiento de sesiones
+        session_starts = []
+        session_ends = []
+        
         for line in lines:
-            # Extraer timestamp
-            timestamp_match = re.search(r'\[([\d-]+\s[\d:]+)\]', line)
+            # Extraer timestamp con formato más preciso
+            timestamp_match = re.search(r'\[([\d-]+\s[\d:]+\.?\d*)\]', line)
             timestamp = None
             if timestamp_match:
                 timestamp_str = timestamp_match.group(1)
                 try:
-                    timestamp = dt.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                    # Intentar con microsegundos primero
+                    if '.' in timestamp_str:
+                        timestamp = dt.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S.%f')
+                    else:
+                        timestamp = dt.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                    
                     if not self.basic_bot_data['start_time']:
                         self.basic_bot_data['start_time'] = timestamp
+                        session_starts.append(timestamp)
                     self.basic_bot_data['end_time'] = timestamp
                 except:
                     pass
             
-            # Detectar compras
-            if 'COMPRA' in line and ('agresiva' in line or 'BÁSICA' in line):
-                price_match = re.search(r'(\d+\.\d+)', line)
+            # Detectar inicio de nueva sesión (cuando el bot se reinicia)
+            if 'COMPRA BTC a $' in line and timestamp:
+                # Si hay un gap de más de 10 minutos, es una nueva sesión
+                if session_starts and self.basic_bot_data['end_time']:
+                    time_gap = (timestamp - self.basic_bot_data['end_time']).total_seconds() / 60
+                    if time_gap > 10:  # Más de 10 minutos = nueva sesión
+                        session_starts.append(timestamp)
+            
+            # Detectar fin de sesión
+            if 'Bot BTC detenido' in line and timestamp:
+                session_ends.append(timestamp)
+            
+            # Detectar compras (formato: "COMPRA BTC a $115444.99")
+            if 'COMPRA BTC a $' in line or ('COMPRA' in line and ('agresiva' in line or 'BÁSICA' in line)):
+                price_match = re.search(r'\$(\d+\.\d+)', line)
+                if not price_match:
+                    price_match = re.search(r'(\d+\.\d+)', line)
                 if price_match:
                     price = float(price_match.group(1))
                     self.basic_bot_data['trades'].append({
@@ -278,9 +302,11 @@ class TradingBotAnalyzerGUI:
                         'timestamp': timestamp
                     })
             
-            # Detectar ventas con P&L
-            if any(keyword in line for keyword in ['STOP LOSS', 'TAKE PROFIT', 'VENTA']):
+            # Detectar ventas con P&L (formatos: "Ganancia/Pérdida: $-0.01 USD" o "P&L: +0.01")
+            if any(keyword in line for keyword in ['STOP LOSS', 'TAKE PROFIT', 'VENTA', 'Ganancia/Pérdida']):
                 profit_match = re.search(r'P&L[:\s]+([+-]?\d+\.\d+)', line)
+                if not profit_match:
+                    profit_match = re.search(r'Ganancia/Pérdida[:\s]+\$([+-]?\d+\.\d+)', line)
                 if not profit_match:
                     profit_match = re.search(r'Ganancia/Pérdida[:\s]+([+-]?\d+\.\d+)', line)
                 
@@ -300,7 +326,9 @@ class TradingBotAnalyzerGUI:
                     elif 'TAKE PROFIT' in line:
                         trade_type = 'TAKE_PROFIT'
                     
-                    price_match = re.search(r'(\d+\.\d+)', line)
+                    price_match = re.search(r'\$(\d+\.\d+)', line)
+                    if not price_match:
+                        price_match = re.search(r'(\d+\.\d+)', line)
                     price = float(price_match.group(1)) if price_match else 0
                     
                     self.basic_bot_data['trades'].append({
@@ -309,6 +337,22 @@ class TradingBotAnalyzerGUI:
                         'profit': profit,
                         'timestamp': timestamp
                     })
+        
+        # Calcular tiempo real considerando múltiples sesiones
+        if session_starts and session_ends:
+            total_runtime = 0
+            # Emparejar inicios con finales de sesión
+            for i in range(min(len(session_starts), len(session_ends))):
+                session_time = (session_ends[i] - session_starts[i]).total_seconds() / 3600
+                total_runtime += session_time
+            
+            # Si hay más inicios que finales, la última sesión aún está activa
+            if len(session_starts) > len(session_ends) and self.basic_bot_data['end_time']:
+                last_session_time = (self.basic_bot_data['end_time'] - session_starts[-1]).total_seconds() / 3600
+                total_runtime += last_session_time
+            
+            # Guardar el tiempo real calculado
+            self.basic_bot_data['real_runtime_hours'] = total_runtime
     
     def parse_ml_bot_log(self, log_content):
         """Analizar el log del bot ML"""
@@ -336,9 +380,14 @@ class TradingBotAnalyzerGUI:
                 self.ml_bot_data['predictions'].append(prediction)
                 self.ml_bot_data['confidence_levels'].append(confidence)
             
-            # Detectar compras ML
-            if 'COMPRA ML' in line:
-                price_match = re.search(r'(\d+\.\d+)', line)
+            # Detectar compras ML - ACTUALIZADO PARA NUEVOS FORMATOS
+            if any(keyword in line for keyword in ['COMPRA ML', '🟢 COMPRA ML BTC']):
+                # Buscar precio en el formato: Precio: $115588.50
+                price_match = re.search(r'Precio:\s*\$(\d+\.?\d*)', line)
+                if not price_match:
+                    # Formato alternativo: cualquier número decimal
+                    price_match = re.search(r'(\d+\.\d+)', line)
+                
                 conf_match = re.search(r'Conf[:\s]+(\d+\.\d+)%', line)
                 
                 if price_match:
@@ -352,12 +401,13 @@ class TradingBotAnalyzerGUI:
                         'timestamp': timestamp
                     })
             
-            # Detectar ventas ML con P&L
-            if any(keyword in line for keyword in ['STOP LOSS ML', 'TAKE PROFIT ML']):
-                profit_match = re.search(r'P&L[:\s]+([+-]?\d+\.\d+)', line)
+            # Detectar ventas ML con P&L - ACTUALIZADO PARA NUEVOS FORMATOS
+            if any(keyword in line for keyword in ['STOP LOSS', 'TAKE PROFIT', '✅ VENTA EXITOSA', '❌ PÉRDIDA']):
+                profit_match = re.search(r'P&L[:\s]+([+-]?\$?\d+\.\d+)', line)
                 
                 if profit_match:
-                    profit = float(profit_match.group(1))
+                    profit_str = profit_match.group(1).replace('$', '').replace('+', '')
+                    profit = float(profit_str)
                     self.ml_bot_data['total_profit'] += profit
                     self.ml_bot_data['total_trades'] += 1
                     
@@ -366,7 +416,16 @@ class TradingBotAnalyzerGUI:
                     else:
                         self.ml_bot_data['losing_trades'] += 1
                     
-                    trade_type = 'STOP_LOSS' if 'STOP LOSS' in line else 'TAKE_PROFIT'
+                    # Determinar tipo de trade
+                    if 'STOP LOSS' in line:
+                        trade_type = 'STOP_LOSS'
+                    elif 'TAKE PROFIT' in line:
+                        trade_type = 'TAKE_PROFIT'
+                    elif '✅' in line:
+                        trade_type = 'WIN'
+                    else:
+                        trade_type = 'LOSS'
+                    
                     price_match = re.search(r'(\d+\.\d+)', line)
                     price = float(price_match.group(1)) if price_match else 0
                     
@@ -475,6 +534,8 @@ class TradingBotAnalyzerGUI:
         # Estadísticas Bot Básico
         basic = self.basic_bot_data
         if basic['total_trades'] > 0:
+            # Usar tiempo real calculado si está disponible, sino usar el cálculo estándar
+            real_runtime = basic.get('real_runtime_hours', self._calculate_runtime(basic['start_time'], basic['end_time']))
             stats['basic_bot'] = {
                 'total_trades': basic['total_trades'],
                 'winning_trades': basic['winning_trades'],
@@ -482,7 +543,7 @@ class TradingBotAnalyzerGUI:
                 'win_rate': (basic['winning_trades'] / basic['total_trades']) * 100,
                 'total_profit': basic['total_profit'],
                 'avg_profit_per_trade': basic['total_profit'] / basic['total_trades'],
-                'runtime_hours': self._calculate_runtime(basic['start_time'], basic['end_time'])
+                'runtime_hours': real_runtime
             }
         
         # Estadísticas Bot ML
