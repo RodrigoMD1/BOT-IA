@@ -1,24 +1,36 @@
 # Configuración del Bot Financiero con Telegram
-# IMPORTANTE: Completa estos datos antes de ejecutar el bot
+# IMPORTANTE: Este archivo ya no contiene claves sensibles
+# Las claves se manejan a través de variables de entorno
 
-# ================================
-# CONFIGURACIÓN TELEGRAM
-# ================================
+import os
+import sys
+from pathlib import Path
 
-# 1. Crear bot en Telegram:
-#    - Busca @BotFather en Telegram
-#    - Escribe /newbot
-#    - Sigue las instrucciones
-#    - Copia el token que te da
+# Agregar directorio padre al path para importar secure_config
+parent_dir = Path(__file__).parent.parent
+sys.path.append(str(parent_dir))
 
-TELEGRAM_TOKEN = "8293607157:AAFyyLRtiXx0cxLViCjPuV_KH7GzzVkz6AQ"
-
-# 2. Obtener tu Chat ID:
-#    - Busca @userinfobot en Telegram
-#    - Escribe /start
-#    - Copia tu Chat ID
-
-CHAT_ID = "5817464985"
+try:
+    from secure_config import get_telegram_keys
+    # Obtener claves de forma segura
+    telegram_config = get_telegram_keys('financial')
+    TELEGRAM_TOKEN = telegram_config['token']
+    CHAT_ID = telegram_config['chat_id']
+    
+    # Validar configuración
+    if not TELEGRAM_TOKEN or 'YOUR_TELEGRAM_BOT_TOKEN_HERE' in TELEGRAM_TOKEN:
+        print("⚠️  TELEGRAM_TOKEN no configurado en .env")
+        TELEGRAM_TOKEN = "8293607157:AAFyyLRtiXx0cxLViCjPuV_KH7GzzVkz6AQ"  # Fallback temporal
+        
+    if not CHAT_ID or 'YOUR_CHAT_ID_HERE' in CHAT_ID:
+        print("⚠️  CHAT_ID no configurado en .env")
+        CHAT_ID = "5817464985"  # Fallback temporal
+        
+except ImportError:
+    print("⚠️  secure_config no disponible, usando configuración local")
+    # Configuración local como fallback
+    TELEGRAM_TOKEN = "8293607157:AAFyyLRtiXx0cxLViCjPuV_KH7GzzVkz6AQ"
+    CHAT_ID = "5817464985"
 
 # ================================
 # CONFIGURACIÓN DE TRADING

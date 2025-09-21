@@ -15,9 +15,19 @@ import numpy as np
 import time
 import threading
 
-# Configuración de claves API - CLAVES REALES DE PRODUCCIÓN
-API_KEY = 'ZJ0QB5V5ijovNtHvtVLMdgoxqZS3B521YcoeosI6Po7Ea9INmvc8vIOXY2DUX3Zm'
-API_SECRET = 'YWmFXL8aTD6tcD7XTdmCdpBKv30p6bHqzUjktigc95ydTfKDUsAySTUVIJmNRaUo'
+# Importar configuración segura
+try:
+    from secure_config import get_binance_keys, safe_start_message, is_production
+    binance_config = get_binance_keys()
+    API_KEY = binance_config['api_key']
+    API_SECRET = binance_config['secret_key']
+    IS_TESTNET = binance_config['testnet']
+    print(f"🔐 Configuración cargada: {'Producción' if not IS_TESTNET else 'Testnet'}")
+except ImportError:
+    print("⚠️  secure_config no disponible, usando configuración local")
+    API_KEY = 'ZJ0QB5V5ijovNtHvtVLMdgoxqZS3B521YcoeosI6Po7Ea9INmvc8vIOXY2DUX3Zm'
+    API_SECRET = 'YWmFXL8aTD6tcD7XTdmCdpBKv30p6bHqzUjktigc95ydTfKDUsAySTUVIJmNRaUo'
+    IS_TESTNET = False
 
 # Parámetros de trading - CONFIGURACIÓN REAL
 SYMBOL = 'BTCUSDT'  # Bitcoin/USDT 
@@ -167,7 +177,22 @@ def run_bot_real():
 
 if __name__ == "__main__":
     print("🚀 INICIANDO BOT BÁSICO - CONFIGURACIÓN REAL")
-    print("⚠️  RECUERDA: Cambiar API_KEY y API_SECRET por claves de producción")
+    
+    # Verificación de seguridad
+    try:
+        if not safe_start_message():
+            print("❌ Operación cancelada por el usuario")
+            exit()
+    except NameError:
+        # Si safe_start_message no está disponible, hacer verificación manual
+        if not IS_TESTNET:
+            print("⚠️  ¡ADVERTENCIA! Ejecutando en PRODUCCIÓN con dinero real")
+            response = input("¿Estás seguro de continuar? (yes/no): ")
+            if response.lower() != 'yes':
+                print("❌ Operación cancelada")
+                exit()
+    
+    print("🔐 Claves API cargadas de forma segura desde .env")
     print("⚠️  BALANCE CONFIGURADO: $10 USD")
     print("⚠️  GESTIÓN DE RIESGO: Más conservadora para dinero real")
     print()

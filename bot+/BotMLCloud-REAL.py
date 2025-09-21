@@ -22,9 +22,19 @@ def log_event(text, log_file="ml_btc_trading_real_log.txt"):
         f.write(f"[{timestamp}] [ML-REAL] {text}\n")
     print(f"[{timestamp}] [ML-REAL] {text}")
 
-# Configuración de claves API de Binance - CLAVES REALES DE PRODUCCIÓN
-API_KEY = 'ZJ0QB5V5ijovNtHvtVLMdgoxqZS3B521YcoeosI6Po7Ea9INmvc8vIOXY2DUX3Zm'
-API_SECRET = 'YWmFXL8aTD6tcD7XTdmCdpBKv30p6bHqzUjktigc95ydTfKDUsAySTUVIJmNRaUo'
+# Importar configuración segura
+try:
+    from secure_config import get_binance_keys, safe_start_message, is_production
+    binance_config = get_binance_keys()
+    API_KEY = binance_config['api_key']
+    API_SECRET = binance_config['secret_key']
+    IS_TESTNET = binance_config['testnet']
+    log_event(f"🔐 ML Bot - Configuración cargada: {'Producción' if not IS_TESTNET else 'Testnet'}")
+except ImportError:
+    log_event("⚠️  secure_config no disponible, usando configuración local")
+    API_KEY = 'ZJ0QB5V5ijovNtHvtVLMdgoxqZS3B521YcoeosI6Po7Ea9INmvc8vIOXY2DUX3Zm'
+    API_SECRET = 'YWmFXL8aTD6tcD7XTdmCdpBKv30p6bHqzUjktigc95ydTfKDUsAySTUVIJmNRaUo'
+    IS_TESTNET = False
 
 # Parámetros de trading - CONFIGURACIÓN REAL
 SYMBOL = 'BTCUSDT'  # Bitcoin/USDT para ML

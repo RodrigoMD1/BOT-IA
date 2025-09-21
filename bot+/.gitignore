@@ -1,0 +1,72 @@
+# ===============================================
+# ARCHIVO .GITIGNORE - PROTECCIÓN DE SEGURIDAD
+# ===============================================
+
+# Variables de entorno y claves API
+.env
+.env.local
+.env.production
+.env.staging
+*.env
+
+# Archivos de configuración con claves
+config_with_keys.py
+secrets.py
+api_keys.py
+
+# Logs de trading (pueden contener información sensible)
+*.log
+*.txt
+logs/
+trading_logs/
+
+# Archivos temporales
+*.tmp
+*.temp
+__pycache__/
+*.pyc
+*.pyo
+
+# Entornos virtuales
+venv/
+env/
+ml-env/
+financial-env/
+*/venv/
+*/env/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Archivos de respaldo
+*.bak
+*.backup
+backup/
+
+# Datos de trading (sensibles)
+trading_data.db
+positions.json
+balance_history.csv
+
+# Archivos de Google Cloud
+service-account-key.json
+gcp-credentials.json
+
+# Archivos de configuración local
+local_config.py
+dev_settings.py
+
+# Directorios de build
+build/
+dist/
+*.egg-info/
+
+# Jupyter Notebooks con datos sensibles
+*.ipynb_checkpoints/
+
+# Archivos de prueba con claves reales
+test_with_real_keys.py
+production_test.py
